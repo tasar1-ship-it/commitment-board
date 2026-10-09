@@ -1,0 +1,133 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "creators": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.isString() && newData.val().length <= 64"
+      }
+    },
+    "claims": {
+      "$plan": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid",
+          "$pid": {
+            ".validate": "newData.isString() && (newData.val().length >= 20 && newData.val().length <= 40 && newData.val().matches(/^[A-Za-z0-9]+$/)) && ($pid === 'c' || ($pid.length <= 13 && $pid.matches(/^p[A-Za-z0-9]+$/)))"
+          }
+        }
+      }
+    },
+    "keys": {
+      "$plan": {
+        ".read": "auth != null && (root.child('claims').child($plan).child(auth.uid).child('c').exists() && root.child('keys').child($plan).child(root.child('claims').child($plan).child(auth.uid).child('c').val()).val() === 'c')",
+        "$token": {
+          ".read": "auth != null && data.exists() && root.child('claims').child($plan).child(auth.uid).child(data.val()).val() === $token",
+          ".write": "auth != null && ($plan.length >= 20 && $plan.length <= 40 && $plan.matches(/^[A-Za-z0-9]+$/)) && ($token.length >= 20 && $token.length <= 40 && $token.matches(/^[A-Za-z0-9]+$/)) && ((root.child('claims').child($plan).child(auth.uid).child('c').exists() && root.child('keys').child($plan).child(root.child('claims').child($plan).child(auth.uid).child('c').val()).val() === 'c') || (!root.child('plans').child($plan).child('meta').exists() && newData.val() === 'c' && root.child('claims').child($plan).child(auth.uid).child('c').val() === $token && root.child('creators').child(auth.uid).val() === 'CREATE_CODE_IS_SET_ONLY_IN_THE_FIREBASE_CONSOLE'))",
+          ".validate": "newData.isString() && (newData.val() === 'c' || (newData.val().length <= 13 && newData.val().matches(/^p[A-Za-z0-9]+$/)))"
+        }
+      }
+    },
+    "plans": {
+      "$plan": {
+        ".read": "auth != null && ($plan.length >= 20 && $plan.length <= 40 && $plan.matches(/^[A-Za-z0-9]+$/))",
+        "meta": {
+          ".write": "auth != null && (root.child('claims').child($plan).child(auth.uid).child('c').exists() && root.child('keys').child($plan).child(root.child('claims').child($plan).child(auth.uid).child('c').val()).val() === 'c')",
+          ".validate": "newData.hasChildren(['coordinator', 'createdAt'])",
+          "title": {
+            ".validate": "newData.isString() && newData.val().length <= 200"
+          },
+          "coordinator": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 80"
+          },
+          "createdAt": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "people": {
+          "$pid": {
+            ".write": "auth != null && (root.child('claims').child($plan).child(auth.uid).child('c').exists() && root.child('keys').child($plan).child(root.child('claims').child($plan).child(auth.uid).child('c').val()).val() === 'c')",
+            ".validate": "$pid.length <= 13 && $pid.matches(/^p[A-Za-z0-9]+$/) && newData.hasChildren(['tint', 'order'])",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length <= 80"
+            },
+            "role": {
+              ".validate": "newData.isString() && newData.val().length <= 80"
+            },
+            "tint": {
+              ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 6"
+            },
+            "order": {
+              ".validate": "newData.isNumber()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "tasks": {
+          "$tid": {
+            ".write": "auth != null && ((root.child('claims').child($plan).child(auth.uid).child('c').exists() && root.child('keys').child($plan).child(root.child('claims').child($plan).child(auth.uid).child('c').val()).val() === 'c') || ((!data.exists() && newData.exists() && (root.child('claims').child($plan).child(auth.uid).child(newData.child('pid').val()).exists() && root.child('keys').child($plan).child(root.child('claims').child($plan).child(auth.uid).child(newData.child('pid').val()).val()).val() === newData.child('pid').val()) && newData.child('addedBy').val() === newData.child('pid').val() && (!newData.child('baseTitle').exists() || newData.child('baseTitle').val() === '') && (!newData.child('baseDue').exists() || newData.child('baseDue').val() === '')) || (data.exists() && newData.exists() && (root.child('claims').child($plan).child(auth.uid).child(data.child('pid').val()).exists() && root.child('keys').child($plan).child(root.child('claims').child($plan).child(auth.uid).child(data.child('pid').val()).val()).val() === data.child('pid').val()) && newData.child('pid').val() === data.child('pid').val() && newData.child('addedBy').val() === data.child('addedBy').val() && newData.child('baseTitle').val() === data.child('baseTitle').val() && newData.child('baseDue').val() === data.child('baseDue').val()) || (data.exists() && !newData.exists() && (root.child('claims').child($plan).child(auth.uid).child(data.child('pid').val()).exists() && root.child('keys').child($plan).child(root.child('claims').child($plan).child(auth.uid).child(data.child('pid').val()).val()).val() === data.child('pid').val()) && data.child('addedBy').val() === data.child('pid').val())))",
+            ".validate": "$tid.length <= 17 && $tid.matches(/^t[A-Za-z0-9]+$/) && newData.hasChildren(['pid', 'addedBy', 'done', 'at'])",
+            "pid": {
+              ".validate": "newData.isString() && (newData.val() === 'c' || root.child('plans').child($plan).child('people').child(newData.val()).exists())"
+            },
+            "title": {
+              ".validate": "newData.isString() && newData.val().length <= 300"
+            },
+            "due": {
+              ".validate": "newData.isString() && (newData.val() === '' || newData.val().matches(/^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/))"
+            },
+            "baseTitle": {
+              ".validate": "newData.isString() && newData.val().length <= 300"
+            },
+            "baseDue": {
+              ".validate": "newData.isString() && (newData.val() === '' || newData.val().matches(/^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/))"
+            },
+            "addedBy": {
+              ".validate": "newData.isString() && (newData.val() === 'c' || (newData.val().length <= 13 && newData.val().matches(/^p[A-Za-z0-9]+$/)))"
+            },
+            "done": {
+              ".validate": "newData.isBoolean()"
+            },
+            "at": {
+              ".validate": "newData.isNumber()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "sigs": {
+          "$pid": {
+            ".write": "auth != null && ((root.child('claims').child($plan).child(auth.uid).child($pid).exists() && root.child('keys').child($plan).child(root.child('claims').child($plan).child(auth.uid).child($pid).val()).val() === $pid) || ((root.child('claims').child($plan).child(auth.uid).child('c').exists() && root.child('keys').child($plan).child(root.child('claims').child($plan).child(auth.uid).child('c').val()).val() === 'c') && !newData.exists()))",
+            ".validate": "($pid === 'c' || root.child('plans').child($plan).child('people').child($pid).exists()) && newData.hasChildren(['name', 'at', 'seal', 'n'])",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 80"
+            },
+            "at": {
+              ".validate": "newData.isNumber() && newData.val() <= now && newData.val() > now - 120000"
+            },
+            "seal": {
+              ".validate": "newData.isString() && newData.val().matches(/^[0-9A-F][0-9A-F][0-9A-F][0-9A-F]-[0-9A-F][0-9A-F][0-9A-F][0-9A-F]$/)"
+            },
+            "n": {
+              ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 200"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    }
+  }
+}

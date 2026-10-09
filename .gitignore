@@ -1,0 +1,6 @@
+tools/node_modules/
+tools/rules.private.json
+tools/create-code.txt
+tools/shots/
+tools/package.json
+tools/package-lock.json

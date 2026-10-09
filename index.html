@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<title>Commitment Board</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230071E3'/%3E%3Cpath d='M9 16.5l4.5 4.5L23 11.5' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+/* Layout: one column, max 1040px. Sign-off status first, then the coordinator's box, then one tinted box per person in two columns that stack on phones. */
+:root{
+  color-scheme:light dark;
+  --bg:#FFFFFF; --surface:#F5F5F7; --field:#FFFFFF; --fill:rgba(118,118,128,.12); --fill-soft:rgba(118,118,128,.08);
+  --fg:#1D1D1F; --fg-2:#6A6A70; --line:rgba(60,60,67,.14);
+  --t0:#EBF4FF; --t1:#EEF9FB; --t2:#F9F1FC; --t3:#F6F3EF; --t4:#F2F1FC; --t5:#FFEEF1; --t6:#FFFAE6;
+  --accent:#0071E3; --accent-ink:#0066CC; --accent-fg:#FFFFFF; --seg-on:#FFFFFF;
+  --good:#176B2C; --good-soft:rgba(52,199,89,.16); --good-dot:#34C759;
+  --warn:#8F4700; --warn-soft:rgba(255,149,0,.16); --warn-dot:#FF9500;
+  --bad:#C20014; --bad-soft:rgba(255,59,48,.12);
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue","Segoe UI",Roboto,Arial,sans-serif;
+  --font-sign:"Snell Roundhand","Apple Chancery","Segoe Script","Brush Script MT",cursive;
+  --font-mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  --r:16px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#000000; --surface:#1C1C1E; --field:#2C2C2E; --fill:rgba(118,118,128,.24); --fill-soft:rgba(118,118,128,.16);
+    --fg:#F5F5F7; --fg-2:#A1A1A6; --line:rgba(84,84,88,.6);
+    --t0:#192D42; --t1:#22383D; --t2:#362640; --t3:#39332D; --t4:#282842; --t5:#3C2027; --t6:#37321C;
+    --accent:#0A84FF; --accent-ink:#409CFF; --accent-fg:#FFFFFF; --seg-on:#636366;
+    --good:#30D158; --good-soft:rgba(48,209,88,.18); --good-dot:#30D158;
+    --warn:#FF9F0A; --warn-soft:rgba(255,159,10,.18); --warn-dot:#FF9F0A;
+    --bad:#FF453A; --bad-soft:rgba(255,69,58,.18);
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 var(--font);-webkit-font-smoothing:antialiased;
+  padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
+.wrap{max-width:1040px;margin:0 auto;padding:28px 20px 48px;display:flex;flex-direction:column;gap:20px}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+::placeholder{color:var(--fg-2);opacity:.7}
+p,h1,h2,ul{margin:0}
+ul{padding:0;list-style:none}
+[hidden]{display:none!important}
+
+.top{display:flex;flex-direction:column;gap:4px}
+.eyebrow{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-2)}
+.title{font:700 28px/1.15 var(--font);letter-spacing:-.02em;color:var(--fg)}
+textarea.title{width:100%;border:0;background:transparent;resize:none;overflow:hidden;padding:2px 6px;margin-left:-6px;border-radius:8px}
+textarea.title:hover,textarea.title:focus{background:var(--fill-soft)}
+
+.who{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.who-label{font-size:13px;font-weight:500;color:var(--fg-2)}
+.seg{display:flex;gap:2px;max-width:100%;overflow-x:auto;background:var(--fill);padding:2px;border-radius:10px;scrollbar-width:none}
+.seg button{flex:none;border:0;background:transparent;font-size:13px;font-weight:500;padding:6px 12px;border-radius:8px;white-space:nowrap;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--seg-on);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.hint{flex-basis:100%;font-size:13.5px;color:var(--fg-2)}
+.hint b{color:var(--fg);font-weight:600}
+
+.banner{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 16px;padding:10px 14px;border-radius:12px;background:var(--warn-soft);font-size:13.5px}
+.banner.bad{background:var(--bad-soft)}
+
+.card{background:var(--card,var(--surface));border-radius:var(--r)}
+.t0{--card:var(--t0)}.t1{--card:var(--t1)}.t2{--card:var(--t2)}.t3{--card:var(--t3)}.t4{--card:var(--t4)}.t5{--card:var(--t5)}.t6{--card:var(--t6)}
+.pad{padding:18px 20px;display:flex;flex-direction:column;gap:12px}
+.pad h2{font-size:17px;font-weight:600}
+.pad p{max-width:62ch}
+.status{padding:18px 20px;display:flex;flex-direction:column;gap:10px}
+.status-top{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}
+.status h2{font-size:20px;font-weight:700;letter-spacing:-.01em}
+.next{font-size:14px;color:var(--fg-2)}
+.next b{color:var(--fg);font-weight:600}
+.tag{font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px}
+.tag.bad{background:var(--bad-soft);color:var(--bad)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;padding-top:4px}
+.chip{display:flex;align-items:center;gap:7px;min-width:0;padding:6px 12px 6px 10px;border-radius:999px;background:var(--fill-soft);font-size:13px}
+.chip i{flex:none;width:8px;height:8px;border-radius:50%;background:var(--fg-2);opacity:.45}
+.chip.signed i{background:var(--good-dot);opacity:1}
+.chip.stale i{background:var(--warn-dot);opacity:1}
+.chip b{font-weight:600;overflow-wrap:anywhere}
+.chip span{color:var(--fg-2)}
+.chip.signed span{color:var(--good)}
+.chip.stale span{color:var(--warn)}
+
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+.grid>:last-child:nth-child(odd){grid-column:1/-1}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+
+.person{display:flex;flex-direction:column;min-width:0}
+.p-head{display:flex;align-items:flex-start;gap:12px;padding:16px 18px 12px}
+.p-id{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.p-name{font-size:17px;font-weight:600;letter-spacing:-.01em;overflow-wrap:anywhere}
+.p-role{font-size:13px;color:var(--fg-2);overflow-wrap:anywhere}
+.you{font-style:normal;font-size:12px;font-weight:600;color:var(--accent-ink);margin-left:6px}
+.in{font-family:inherit;color:inherit;border:0;background:transparent;padding:2px 6px;margin-left:-6px;border-radius:7px;width:100%;min-width:0}
+.in:hover,.in:focus{background:var(--fill-soft)}
+.pill{flex:none;font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--fill);color:var(--fg-2);white-space:nowrap}
+.pill.signed{background:var(--good-soft);color:var(--good)}
+.pill.stale{background:var(--warn-soft);color:var(--warn)}
+
+.tasks{padding:0 18px;display:flex;flex-direction:column}
+.task{display:grid;grid-template-columns:22px minmax(0,1fr) auto;column-gap:10px;row-gap:4px;padding:10px 0;border-top:1px solid var(--line)}
+.check{grid-column:1;grid-row:1;margin-top:5px;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--fg-2);background:transparent;padding:0;display:grid;place-items:center}
+button.check{cursor:pointer}
+.check.on,.check[aria-pressed="true"]{background:var(--accent);border-color:var(--accent)}
+.check.on::after,.check[aria-pressed="true"]::after{content:"";width:10px;height:6px;border-left:2px solid var(--accent-fg);border-bottom:2px solid var(--accent-fg);transform:translateY(-1px) rotate(-45deg)}
+.t-title{grid-column:2;grid-row:1;font:inherit;color:inherit;line-height:1.35;padding:5px 6px;min-width:0;overflow-wrap:anywhere}
+textarea.t-title{width:100%;border:0;background:transparent;resize:none;overflow:hidden;border-radius:7px;min-height:30px}
+textarea.t-title:hover,textarea.t-title:focus{background:var(--fill-soft)}
+.task.done .t-title{color:var(--fg-2);text-decoration:line-through}
+.x{grid-column:3;grid-row:1;width:26px;height:26px;margin-top:3px;border:0;border-radius:50%;background:transparent;color:var(--fg-2);font-size:18px;line-height:1;cursor:pointer}
+.x:hover{background:var(--fill)}
+.when{grid-column:2/-1;grid-row:2;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding-left:6px;font-size:13px;color:var(--fg-2)}
+.t-date{font-variant-numeric:tabular-nums;font-weight:600;color:var(--fg)}
+input.t-date{font:inherit;font-size:14px;font-weight:500;border:0;background:var(--fill);border-radius:8px;padding:5px 8px;min-height:30px;max-width:100%}
+.task.overdue .t-date{color:var(--bad)}
+.task.done .t-date{color:var(--fg-2);font-weight:500}
+.when .bad{color:var(--bad);font-weight:600}
+.when .warn{color:var(--warn);font-weight:600}
+.none{padding:4px 18px 14px;font-size:14px;color:var(--fg-2)}
+.add{align-self:flex-start;margin:2px 12px 10px;border:0;background:transparent;color:var(--accent-ink);font-weight:600;padding:8px 6px;border-radius:8px;cursor:pointer}
+.add::before{content:"+ "}
+
+.p-foot{padding:14px 18px 16px;border-top:1px solid var(--line);display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+.sign{width:100%;display:flex;flex-direction:column;gap:10px}
+.pledge,.note{font-size:13px;color:var(--fg-2)}
+.note.warn,.pledge.warn{color:var(--warn)}
+.sign-row{display:flex;flex-wrap:wrap;gap:8px}
+.sign-name{flex:1 1 180px;min-width:0;font:inherit;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--field);color:var(--fg)}
+.btn{font-weight:600;border:0;border-radius:10px;padding:9px 16px;cursor:pointer}
+a.btn{text-decoration:none;display:inline-block}
+.btn.primary{background:var(--accent);color:var(--accent-fg)}
+.btn.primary:disabled{opacity:.4;cursor:default}
+.btn.plain{background:transparent;color:var(--accent-ink);padding:6px 0;font-size:13.5px}
+.btn.danger{color:var(--bad)}
+.seal{width:100%;display:flex;flex-direction:column;gap:6px}
+.sig{font-family:var(--font-sign);font-size:30px;line-height:1.25;padding-bottom:2px;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
+.line{font-size:12.5px;color:var(--fg-2)}
+.line code{font-family:var(--font-mono);font-size:12px;letter-spacing:.04em;color:var(--fg);white-space:nowrap}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px}
+.linkbox{width:100%;font:12px var(--font-mono);padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--field);color:var(--fg)}
+.wrap>.btn{align-self:flex-start}
+
+.field{display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--fg-2)}
+.text{font:inherit;font-size:16px;color:var(--fg);padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--field);width:100%}
+.boards{display:flex;flex-direction:column}
+.boards a{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;padding:11px 0;border-top:1px solid var(--line);color:var(--fg);text-decoration:none}
+.boards li:first-child a{border-top:0}
+.boards span{color:var(--fg-2);font-size:13px}
+.muted{color:var(--fg-2)}
+.foot{display:flex;flex-direction:column;align-items:flex-start;gap:6px;font-size:12.5px;color:var(--fg-2);max-width:72ch}
+@media (max-width:560px){
+  .wrap{padding:20px 16px 40px;gap:16px}
+  .title{font-size:24px}
+  textarea,input{font-size:16px!important}
+}
+@media (prefers-reduced-motion:no-preference){.seg button,.check,.btn{transition:background-color .15s ease,opacity .15s ease}}
+</style>
+</head>
+<body>
+<div id="app" class="wrap"><p class="muted">Opening…</p></div>
+<noscript><p style="padding:20px">This page needs JavaScript.</p></noscript>
+<script src="firebase-app-compat.js"></script>
+<script src="firebase-auth-compat.js"></script>
+<script src="firebase-database-compat.js"></script>
+<script>
+/* Commitment Board. Own code is ES5 on purpose (var and function only). */
+(function () {
+'use strict';
+var VERSION = '1.0.0';
+var FB = {
+  apiKey: 'AIzaSyCoK5EHjJKveuYVQZtMrMUlmkY3_LYsTi0',
+  authDomain: 'commitment-board-290f6.firebaseapp.com',
+  databaseURL: 'https://commitment-board-290f6-default-rtdb.europe-west1.firebasedatabase.app',
+  projectId: 'commitment-board-290f6',
+  appId: '1:338503096272:web:dc8549225eb2432e4e4bd5'
+};
+var LS = 'cb1_';
+var app = document.getElementById('app');
+var S = { screen: 'load', mode: 'live', ready: false, fatal: '', P: '', tok: '', me: null, db: null, uid: null, canWrite: true,
+  err: '', offline: false, confirm: null, focusNext: null, draft: {}, copied: '', showLink: '', busy: false, startErr: '' };
+var live = { plan: null, tasks: [], sigs: {}, keys: {} }, demo = null;
+function D() { return S.mode === 'demo' ? demo : live; }
+
+/* ---------- helpers ---------- */
+var ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ESC[c]; }); }
+function pad(n) { n = String(n); return n.length < 2 ? '0' + n : n; }
+function iso(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+function today() { return iso(new Date()); }
+function isDate(s) { return /^\d{4}-\d{2}-\d{2}$/.test(s || ''); }
+function toD(s) { var a = s.split('-'); return new Date(+a[0], +a[1] - 1, +a[2], 12); }
+var F1 = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+var F2 = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+var FT = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+var FW = new Intl.DateTimeFormat('en-GB', { weekday: 'long' });
+function fmt(s) { if (!isDate(s)) { return ''; } var d = toD(s); return (d.getFullYear() === new Date().getFullYear() ? F1 : F2).format(d); }
+function fmtTime(s) { var d = new Date(s); return isNaN(d) ? '' : FT.format(d); }
+function fmtDay(s) { var d = new Date(s); return isNaN(d) ? '' : F2.format(d); }
+function weekend(s) { var g = toD(s).getDay(); return g === 0 || g === 6; }
+function hex8(n) { var h = (n >>> 0).toString(16).toUpperCase(); while (h.length < 8) { h = '0' + h; } return h; }
+/* Seal: a short code derived from the exact wording and dates a person signs. */
+function hash(str) {
+  var h1 = 0xdeadbeef, h2 = 0x41c6ce57, i, ch, hex;
+  for (i = 0; i < str.length; i++) { ch = str.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  hex = hex8(h2) + hex8(h1);
+  return hex.slice(0, 4) + '-' + hex.slice(4, 8);
+}
+/* Link tokens and ids: letters and digits from the browser's secure random source. */
+var AL = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+function rid(n) {
+  var a = new Uint8Array(n * 3), s = '', i;
+  (window.crypto || window.msCrypto).getRandomValues(a);
+  for (i = 0; i < a.length && s.length < n; i++) { if (a[i] < 228) { s += AL.charAt(a[i] % 57); } }
+  return s.length === n ? s : rid(n);
+}
+var ls = {
+  get: function (k) { try { return localStorage.getItem(LS + k); } catch (e) { return null; } },
+  set: function (k, v) { try { if (v == null) { localStorage.removeItem(LS + k); } else { localStorage.setItem(LS + k, v); } } catch (e) {} }
+};
+function boards() { try { var a = JSON.parse(ls.get('boards') || '[]'); return a instanceof Array ? a : []; } catch (e) { return []; } }
+function saveBoard(b) { var a = boards().filter(function (x) { return x.p !== b.p; }); a.unshift(b); ls.set('boards', JSON.stringify(a.slice(0, 50))); }
+function baseUrl() { return location.origin + location.pathname; }
+
+/* ---------- derived state ---------- */
+function people() { var p = D().plan; return (p && p.people) || []; }
+function coord() { var p = D().plan || {}; return { id: 'c', name: p.coordinator || 'Marco', role: 'Coordinator' }; }
+function everyone() { return [coord()].concat(people()); }
+function person(pid) { return pid === 'c' ? coord() : people().filter(function (p) { return p.id === pid; })[0]; }
+function pname(p) { var n = ((p && p.name) || '').trim(), i; if (n) { return n; } i = people().indexOf(p); return i >= 0 ? 'Person ' + (i + 1) : 'Unnamed'; }
+function tintOf(p) { var m; if (p.id === 'c') { return 0; } if (p.tint >= 1 && p.tint <= 6) { return p.tint; } m = /^p([1-6])$/.exec(p.id); return m ? +m[1] : (Math.max(0, people().indexOf(p)) % 6) + 1; }
+function task(id) { return D().tasks.filter(function (t) { return t.id === id; })[0]; }
+function tasksOf(pid) { return D().tasks.filter(function (t) { return t.pid === pid; }).sort(function (a, b) { var x = a.due || '9999', y = b.due || '9999'; return x < y ? -1 : x > y ? 1 : (a.at || 0) - (b.at || 0); }); }
+function complete(pid) { var ts = tasksOf(pid); return ts.length > 0 && ts.every(function (t) { return (t.title || '').trim() && isDate(t.due); }); }
+function sealOf(pid) { return hash(tasksOf(pid).map(function (t) { return (t.title || '').trim() + '|' + (t.due || ''); }).sort().join('\n')); }
+function status(pid) { var s = D().sigs[pid]; if (!s) { return tasksOf(pid).length ? 'awaiting' : 'empty'; } return s.seal === sealOf(pid) ? 'signed' : 'stale'; }
+function isCoord() { return S.me === 'c'; }
+function mix(a, b) { var k, o = {}; for (k in a) { o[k] = a[k]; } for (k in b) { o[k] = b[k]; } return o; }
+
+/* ---------- storage: the shared board in Firebase, or an in-memory example ---------- */
+function ref(p) { return S.db.ref(p); }
+function base() { return 'plans/' + S.P; }
+function werr(e) {
+  S.err = e && e.code === 'PERMISSION_DENIED'
+    ? 'That change was not accepted. Reload the page; if it happens again, your link may no longer be valid.'
+    : 'That change could not be saved. Check the connection and try again.';
+  render();
+}
+var store = {
+  setTitle: function (v) { D().plan.title = v; if (S.mode === 'live') { ref(base() + '/meta/title').set(v).catch(werr); } },
+  setPerson: function (pid, patch) {
+    var p = person(pid), k; if (p) { for (k in patch) { p[k] = patch[k]; } }
+    if (S.mode === 'live') { ref(base() + '/people/' + pid).update(patch).catch(werr); }
+  },
+  addPerson: function () {
+    var ps = people(), used = ps.map(tintOf), tn = 1, ord = 0, i, pid = 'p' + rid(8), rec, u;
+    while (tn < 6 && used.indexOf(tn) >= 0) { tn++; }
+    for (i = 0; i < ps.length; i++) { ord = Math.max(ord, ps[i].order || 0); }
+    rec = { name: '', role: '', tint: tn, order: ord + 1 };
+    ps.push(mix({ id: pid }, rec));
+    if (S.mode === 'live') { u = {}; u[base() + '/people/' + pid] = rec; u['keys/' + S.P + '/' + rid(24)] = pid; S.db.ref().update(u).catch(werr); }
+    return pid;
+  },
+  removePerson: function (pid) {
+    var d = D(), u = {}, k, ts = tasksOf(pid), i;
+    if (S.mode === 'live') {
+      u[base() + '/people/' + pid] = null; u[base() + '/sigs/' + pid] = null;
+      for (i = 0; i < ts.length; i++) { u[base() + '/tasks/' + ts[i].id] = null; }
+      for (k in live.keys) { if (live.keys[k] === pid) { u['keys/' + S.P + '/' + k] = null; } }
+      S.db.ref().update(u).catch(werr);
+    }
+    d.tasks = d.tasks.filter(function (t) { return t.pid !== pid; });
+    delete d.sigs[pid];
+    d.plan.people = d.plan.people.filter(function (p) { return p.id !== pid; });
+  },
+  setTask: function (id, t) { D().tasks.push(mix({ id: id }, t)); if (S.mode === 'live') { ref(base() + '/tasks/' + id).set(t).catch(werr); } },
+  patchTask: function (id, p) { var t = task(id), k; if (t) { for (k in p) { t[k] = p[k]; } } if (S.mode === 'live') { ref(base() + '/tasks/' + id).update(p).catch(werr); } },
+  delTask: function (id) { var d = D(); d.tasks = d.tasks.filter(function (t) { return t.id !== id; }); if (S.mode === 'live') { ref(base() + '/tasks/' + id).remove().catch(werr); } },
+  setSig: function (pid, s) {
+    D().sigs[pid] = s;
+    if (S.mode === 'live') { ref(base() + '/sigs/' + pid).set({ name: s.name, seal: s.seal, n: s.n, at: firebase.database.ServerValue.TIMESTAMP }).catch(werr); }
+  },
+  delSig: function (pid) { delete D().sigs[pid]; if (S.mode === 'live') { ref(base() + '/sigs/' + pid).remove().catch(werr); } }
+};
+function ingest(v) {
+  var k, ps = [], ts = [], q;
+  if (!v || !v.meta) { live.plan = null; live.tasks = []; live.sigs = {}; return; }
+  for (k in (v.people || {})) { q = v.people[k] || {}; ps.push({ id: k, name: q.name || '', role: q.role || '', tint: q.tint, order: q.order || 0 }); }
+  ps.sort(function (a, b) { return (a.order - b.order) || (a.id < b.id ? -1 : 1); });
+  for (k in (v.tasks || {})) { ts.push(mix({ id: k }, v.tasks[k])); }
+  live.plan = { title: v.meta.title || '', coordinator: v.meta.coordinator || 'Marco', people: ps };
+  live.tasks = ts; live.sigs = v.sigs || {};
+}
+
+/* ---------- Firebase ---------- */
+var fbReady = null;
+function fb() {
+  if (fbReady) { return fbReady; }
+  fbReady = new Promise(function (res, rej) {
+    if (typeof firebase === 'undefined') { rej({ code: 'no-sdk' }); return; }
+    try { firebase.initializeApp(FB); } catch (e) { rej({ code: 'no-sdk' }); return; }
+    firebase.auth().signInAnonymously().then(function (c) { res({ db: firebase.database(), uid: c.user.uid }); }).catch(function (e) { rej({ code: 'no-auth', detail: e && e.code }); });
+  });
+  return fbReady;
+}
+function fatalText(e) {
+  var c = e && e.code;
+  if (c === 'no-sdk') { return 'The page did not load completely. Check the connection and reload.'; }
+  if (c === 'no-auth') { return 'The board could not be reached (' + ((e && e.detail) || 'no sign-in') + '). Check the connection and reload.'; }
+  return 'This link is incomplete or no longer valid. Ask the coordinator to send it again.';
+}
+var offT = 0;
+function attach() {
+  ref(base()).on('value', function (s) {
+    ingest(s.val()); S.ready = true;
+    if (!live.plan) { S.fatal = 'This board no longer exists.'; }
+    else if (isCoord()) { saveBoard({ p: S.P, k: S.tok, t: live.plan.title, a: (s.val().meta.createdAt || Date.now()) }); }
+    render();
+  }, function () { S.fatal = 'This board could not be opened. Reload the page.'; S.ready = true; render(); });
+  if (isCoord()) { ref('keys/' + S.P).on('value', function (s) { live.keys = s.val() || {}; render(); }, function () {}); }
+  ref('.info/connected').on('value', function (s) {
+    clearTimeout(offT);
+    if (s.val() === true) { if (S.offline) { S.offline = false; render(); } }
+    else { offT = setTimeout(function () { S.offline = true; render(); }, 6000); }
+  });
+}
+function openBoard(P, pid, tok) {
+  S.screen = 'board'; S.mode = 'live'; S.P = P; S.me = pid; S.tok = tok; S.ready = false; S.fatal = ''; render();
+  fb().then(function (x) {
+    S.db = x.db; S.uid = x.uid;
+    return x.db.ref('claims/' + P + '/' + x.uid + '/' + pid).set(tok).then(function () { return x.db.ref('keys/' + P + '/' + tok).once('value'); });
+  }).then(function (snap) {
+    if (snap.val() !== pid) { throw { code: 'bad-link' }; }
+    attach();
+  }).catch(function (e) { S.fatal = fatalText(e); S.ready = true; render(); });
+}
+function createBoard(title, coordName) {
+  var code = ls.get('code'), P = rid(22), TC = rid(24);
+  S.busy = true; S.startErr = ''; render();
+  fb().then(function (x) {
+    var up = {};
+    up['creators/' + x.uid] = code; up['claims/' + P + '/' + x.uid + '/c'] = TC;
+    return x.db.ref().update(up).then(function () { return x.db.ref('keys/' + P + '/' + TC).set('c'); }).then(function () {
+      var u = {}, i;
+      u['plans/' + P + '/meta'] = { title: title, coordinator: coordName, createdAt: firebase.database.ServerValue.TIMESTAMP };
+      for (i = 1; i <= 4; i++) { u['plans/' + P + '/people/p' + i] = { name: '', role: '', tint: i, order: i }; u['keys/' + P + '/' + rid(24)] = 'p' + i; }
+      return x.db.ref().update(u);
+    });
+  }).then(function () {
+    saveBoard({ p: P, k: TC, t: title, a: Date.now() });
+    location.hash = P + '.c.' + TC;
+  }).catch(function (e) {
+    S.busy = false;
+    S.startErr = e && e.code === 'PERMISSION_DENIED' ? 'This start link is not valid any more. Ask for a new one.'
+      : (e && (e.code === 'no-sdk' || e.code === 'no-auth')) ? fatalText(e)
+      : 'The board could not be created. Check the connection and try again.';
+    render();
+  });
+}
+
+/* ---------- example data (?demo) ---------- */
+function makeDemo() {
+  function d(n) { var x = new Date(); x.setDate(x.getDate() + n); return iso(x); }
+  function T(n, pid, title, due, o) { return mix({ id: 't' + n, pid: pid, title: title, due: due, baseTitle: title, baseDue: due, addedBy: 'c', done: false, at: n }, o || {}); }
+  demo = { plan: { coordinator: 'Marco', title: 'Example: share purchase closing', people: [
+      { id: 'p1', name: 'Anna Weber', role: 'Buyer' }, { id: 'p2', name: 'Jonas Keller', role: 'Seller' },
+      { id: 'p3', name: 'Sofia Marin', role: 'Escrow bank' }, { id: 'p4', name: 'Peter Lang', role: 'Tax adviser' }] },
+    tasks: [
+      T(1, 'p1', 'Send the signed KYC pack to the escrow bank', d(-2), { done: true }),
+      T(2, 'p1', 'Provide the source-of-funds letter', d(3)),
+      T(3, 'p1', 'Transfer the purchase price to escrow', d(10)),
+      T(4, 'p2', 'Deliver the executed share transfer form', d(6), { baseDue: d(4) }),
+      T(5, 'p2', 'Confirm bank details for the payout', d(8)),
+      T(6, 'p3', 'Open the escrow account and share the IBAN', d(-1)),
+      T(7, 'p3', 'Confirm receipt of funds with the payment copy', d(11)),
+      T(8, 'p4', 'File the tax clearance request', d(5)),
+      T(9, 'p4', 'Send the closing tax memo', d(9), { addedBy: 'p4', baseTitle: '', baseDue: '' }),
+      T(10, 'c', 'Circulate the closing checklist to everyone', d(3)),
+      T(11, 'c', 'Confirm the closing date and time with all parties', d(7))],
+    sigs: {} };
+}
+function enterDemo() {
+  var t = Date.now();
+  makeDemo(); S.mode = 'demo'; S.screen = 'board'; S.me = 'p3'; S.ready = true; S.draft = {};
+  demo.sigs.p1 = { name: 'Anna Weber', at: t - 26 * 36e5, seal: sealOf('p1'), n: 3 };
+  demo.sigs.p2 = { name: 'Jonas Keller', at: t - 20 * 36e5, seal: sealOf('p2'), n: 2 };
+  demo.sigs.p4 = { name: 'Peter Lang', at: t - 30 * 36e5, seal: '0000-0000', n: 1 };
+}
+
+/* ---------- view ---------- */
+function plainHead(title) { return '<header class="top"><p class="eyebrow">Commitment Board</p><h1 class="title">' + title + '</h1></header>'; }
+function head() {
+  var p = D().plan || {}, t = (p.title || '').trim();
+  var title = (isCoord() && S.canWrite)
+    ? '<textarea id="plan-title" class="title" rows="1" maxlength="200" data-act="ptitle" placeholder="Name the transaction" aria-label="Transaction name">' + esc(p.title || '') + '</textarea>'
+    : '<h1 class="title">' + esc(t || 'Transaction commitments') + '</h1>';
+  return '<header class="top"><p class="eyebrow">Coordinator · ' + esc(p.coordinator || 'Marco') + '</p>' + title + '</header>';
+}
+function banner() {
+  var h = '';
+  if (S.mode === 'demo') { h += '<div class="banner"><span><b>Example data.</b> Nothing on this view is saved.</span><a class="btn plain" href="./">Leave the example</a></div>'; }
+  if (S.offline) { h += '<div class="banner"><span><b>No connection.</b> Changes are sent when the connection is back.</span></div>'; }
+  if (S.err) { h += '<div class="banner bad"><span>' + esc(S.err) + '</span><button type="button" class="btn plain" data-act="okerr">Dismiss</button></div>'; }
+  return h;
+}
+function who() {
+  var hint;
+  function opt(id, label) { return '<button type="button" data-act="me" data-id="' + id + '" aria-pressed="' + (S.me === id) + '">' + esc(label) + '</button>'; }
+  if (S.mode === 'demo') {
+    hint = isCoord() ? 'The coordinator lists each person’s tasks and dates, adds his own, then sends each person their personal link.'
+      : 'Each person checks their tasks and dates, adjusts what does not fit, then signs off on their card.';
+    return '<section class="who" aria-label="View as"><span class="who-label">View as</span><div class="seg" role="group">' + opt('c', coord().name + ' · Coordinator')
+      + people().map(function (p) { return opt(p.id, pname(p)); }).join('') + '</div><p class="hint">' + hint + '</p></section>';
+  }
+  if (isCoord()) { return '<p class="hint">You are the coordinator. List each person’s tasks and dates, add your own, then send each person their personal link.</p>'; }
+  return '<p class="hint">You are <b>' + esc(pname(person(S.me))) + '</b>. Check your tasks and dates, adjust what does not fit, then sign off on your card.</p>';
+}
+function statusCard() {
+  var ps = everyone(), st = ps.map(function (p) { return status(p.id); });
+  var n = st.filter(function (s) { return s !== 'empty'; }).length;
+  var signed = st.filter(function (s) { return s === 'signed'; }).length, td = today();
+  var open = D().tasks.filter(function (t) { return !t.done && isDate(t.due) && person(t.pid); });
+  var overdue = open.filter(function (t) { return t.due < td; }).length;
+  var next = open.filter(function (t) { return t.due >= td; }).sort(function (a, b) { return a.due < b.due ? -1 : a.due > b.due ? 1 : 0; })[0];
+  var h = !n ? 'No commitments yet' : signed === n ? 'All ' + n + ' committed' : signed + ' of ' + n + ' committed';
+  var line = next ? 'Next deadline: <b>' + fmt(next.due) + '</b> · ' + esc(pname(person(next.pid))) + ' · ' + esc((next.title || '').trim() || 'Untitled task')
+    : (D().tasks.length ? 'No open deadlines.' : 'No tasks yet. List each person’s tasks and dates below.');
+  var label = { signed: 'Committed', stale: 'Needs to sign again', awaiting: 'Awaiting sign-off', empty: 'No tasks yet' };
+  return '<section class="card status" aria-label="Sign-off status"><div class="status-top"><h2>' + h + '</h2>' + (overdue ? '<span class="tag bad">' + overdue + ' overdue</span>' : '') + '</div><p class="next">' + line + '</p><ul class="chips">'
+    + ps.map(function (p, i) { return '<li class="chip ' + st[i] + '"><i></i><b>' + esc(pname(p)) + '</b><span>' + label[st[i]] + '</span></li>'; }).join('') + '</ul></section>';
+}
+function taskRow(t, p, canTick, canChange, co) {
+  var td = today(), od = !t.done && isDate(t.due) && t.due < td, isToday = !t.done && t.due === td, who = esc(pname(p)), m = [];
+  var chk = canTick ? '<button type="button" class="check" data-act="done" data-id="' + t.id + '" aria-pressed="' + (!!t.done) + '" aria-label="' + (t.done ? 'Mark as not done' : 'Mark as done') + '"></button>'
+    : '<span class="check' + (t.done ? ' on' : '') + '" aria-hidden="true"></span>';
+  var title = canChange ? '<textarea id="tt-' + t.id + '" class="t-title" rows="1" maxlength="300" data-act="title" data-id="' + t.id + '" placeholder="What needs to be done" aria-label="Task">' + esc(t.title || '') + '</textarea>'
+    : '<span class="t-title">' + esc((t.title || '').trim() || 'Untitled task') + '</span>';
+  var del = canChange && (co || t.addedBy === p.id) ? '<button type="button" class="x" data-act="del" data-id="' + t.id + '" aria-label="Remove task">×</button>' : '';
+  if (canChange) {
+    m.push('<input id="td-' + t.id + '" class="t-date" type="date" data-act="due" data-id="' + t.id + '" value="' + esc(isDate(t.due) ? t.due : '') + '" aria-label="Due date">');
+    if (isDate(t.due)) { m.push(esc(FW.format(toD(t.due)))); }
+  } else { m.push('<span class="t-date">' + (isDate(t.due) ? fmt(t.due) : 'No date yet') + '</span>'); }
+  if (t.done) { m.push('Done'); }
+  else if (od) { m.push('<span class="bad">Overdue</span>'); }
+  else if (isToday) { m.push('<span class="warn">Due today</span>'); }
+  if (!t.done && isDate(t.due) && weekend(t.due)) { m.push('<span class="warn">Falls on a weekend</span>'); }
+  if (t.addedBy && t.addedBy !== 'c') { m.push('Added by ' + who); }
+  else {
+    if (isDate(t.baseDue) && isDate(t.due) && t.baseDue !== t.due) { m.push(who + ' moved this from ' + fmt(t.baseDue)); }
+    if ((t.baseTitle || '').trim() && (t.title || '').trim() !== (t.baseTitle || '').trim()) { m.push('Reworded by ' + who); }
+  }
+  m = m.map(function (x) { return x.charAt(0) === '<' ? x : '<span>' + x + '</span>'; });
+  return '<li class="task' + (t.done ? ' done' : '') + (od ? ' overdue' : '') + '">' + chk + title + del + '<div class="when">' + m.join('') + '</div></li>';
+}
+function signForm(pid, n) {
+  var v = S.draft['sn-' + pid] || '';
+  if (!complete(pid)) { return '<p class="pledge warn">Every task needs a description and a date before you can sign.</p>'; }
+  return '<form class="sign" data-pid="' + pid + '"><p class="pledge">I commit to completing ' + (n === 1 ? 'this task by the date' : 'these ' + n + ' tasks by the dates') + ' shown. This is my personal word, not a legal contract.</p>'
+    + '<div class="sign-row"><input id="sn-' + pid + '" class="sign-name" maxlength="80" data-draft="sn-' + pid + '" value="' + esc(v) + '" placeholder="Type your full name to sign" autocomplete="name" aria-label="Your full name"><button class="btn primary" type="submit"' + (v.trim().length < 2 ? ' disabled' : '') + '>Sign off</button></div></form>';
+}
+function sigBlock(p, st, n, mine) {
+  var pid = p.id, s = D().sigs[pid], can = mine && S.canWrite;
+  if (st === 'signed') {
+    return '<div class="seal"><span class="sig">' + esc(s.name) + '</span><span class="line">Committed ' + esc(fmtTime(s.at)) + ' · ' + s.n + (s.n === 1 ? ' task' : ' tasks') + ' · Seal <code>' + esc(s.seal) + '</code></span></div>'
+      + (can ? '<button type="button" class="btn plain" data-act="withdraw" data-id="' + pid + '">Withdraw sign-off to make changes</button>' : '');
+  }
+  if (st === 'stale') { return '<p class="note warn">Tasks or dates changed after ' + esc(s.name) + ' signed on ' + esc(fmtTime(s.at)) + '. That sign-off no longer covers them.</p>' + (can ? signForm(pid, n) : ''); }
+  if (st === 'awaiting') { return can ? signForm(pid, n) : '<p class="note">Awaiting sign-off from ' + esc(pname(p)) + '.</p>'; }
+  return '';
+}
+function linkFor(pid) {
+  var k, tok = '';
+  if (pid === 'c') { tok = S.tok; } else { for (k in live.keys) { if (live.keys[k] === pid) { tok = k; break; } } }
+  return tok ? baseUrl() + '#' + S.P + '.' + pid + '.' + tok : '';
+}
+function linkBox(pid) { return '<input class="linkbox" id="lk-' + pid + '" readonly value="' + esc(linkFor(pid)) + '" aria-label="Link">'; }
+function card(p) {
+  var pid = p.id, st = status(pid), ts = tasksOf(pid), mine = S.me === pid, co = isCoord();
+  var canTick = S.canWrite && (co || mine);
+  var canChange = canTick && !(mine && st === 'signed');
+  var idb = (co && S.canWrite && pid !== 'c')
+    ? '<input id="pn-' + pid + '" class="p-name in" maxlength="80" data-act="pname" data-id="' + pid + '" value="' + esc(p.name || '') + '" placeholder="Name" aria-label="Name"><input id="pr-' + pid + '" class="p-role in" maxlength="80" data-act="prole" data-id="' + pid + '" value="' + esc(p.role || '') + '" placeholder="Role, for example Buyer’s counsel" aria-label="Role">'
+    : '<span class="p-name">' + esc(pname(p)) + (mine ? '<em class="you">You</em>' : '') + '</span>' + (p.role ? '<span class="p-role">' + esc(p.role) + '</span>' : '');
+  var pill = { signed: 'Committed', stale: 'Changed after sign-off', awaiting: 'Awaiting sign-off' }[st];
+  var list = ts.length ? '<ul class="tasks">' + ts.map(function (t) { return taskRow(t, p, canTick, canChange, co); }).join('') + '</ul>' : '<p class="none">' + (mine && !co ? 'No tasks are listed for you yet.' : 'No tasks yet.') + '</p>';
+  var add = canChange ? '<button type="button" class="add" data-act="add" data-id="' + pid + '">Add task</button>' : '';
+  var sig = sigBlock(p, st, ts.length, mine), admin = '', foot;
+  if (co && S.canWrite && pid !== 'c') {
+    admin = S.confirm === pid
+      ? '<div class="row"><span class="note">Remove ' + esc(pname(p)) + ' and ' + (ts.length === 1 ? '1 task' : ts.length + ' tasks') + '?</span><button type="button" class="btn plain danger" data-act="rm-yes" data-id="' + pid + '">Remove</button><button type="button" class="btn plain" data-act="rm-no">Keep</button></div>'
+      : '<div class="row">' + (S.mode === 'live' ? '<button type="button" class="btn plain" data-act="link" data-id="' + pid + '">' + (S.copied === pid ? 'Link copied' : 'Copy personal link') + '</button>' : '')
+        + '<button type="button" class="btn plain danger" data-act="rm" data-id="' + pid + '">Remove person</button></div>' + (S.showLink === pid ? linkBox(pid) : '');
+  }
+  foot = sig || admin ? '<div class="p-foot">' + sig + admin + '</div>' : '';
+  return '<article class="card person t' + tintOf(p) + '"><div class="p-head"><div class="p-id">' + idb + '</div>' + (pill ? '<span class="pill ' + st + '">' + pill + '</span>' : '') + '</div>' + list + add + foot + '</article>';
+}
+function footer() {
+  var h = '<footer class="foot">';
+  if (isCoord() && S.mode === 'live') {
+    h += '<div class="row"><button type="button" class="btn plain" data-act="link" data-id="c">' + (S.copied === 'c' ? 'Link copied' : 'Copy my coordinator link') + '</button><a class="btn plain" href="./">All boards</a></div>' + (S.showLink === 'c' ? linkBox('c') : '');
+  }
+  return h + '<p>A sign-off here is a personal commitment between the people named on this page. It is not a legal contract.</p>'
+    + '<p>The seal code is calculated from a person’s tasks and dates. If any of them change after sign-off, the seal no longer matches and that person is asked to sign again.</p>'
+    + '<p>Everyone with a link can read the whole board. Keep account numbers and passwords out of it.</p>'
+    + '<p>Version ' + VERSION + '</p></footer>';
+}
+function startView() {
+  var code = ls.get('code'), bs = boards(), h = plainHead(code || bs.length ? 'Boards' : 'Open your personal link');
+  if (S.startErr) { h += '<div class="banner bad"><span>' + esc(S.startErr) + '</span></div>'; }
+  if (code) {
+    h += '<form class="card pad" id="newboard"><h2>New board</h2>'
+      + '<label class="field"><span>Transaction</span><input id="nb-title" class="text" maxlength="200" data-draft="nb-title" value="' + esc(S.draft['nb-title'] || '') + '" placeholder="For example: Share purchase closing"></label>'
+      + '<label class="field"><span>Coordinator</span><input id="nb-coord" class="text" maxlength="80" data-draft="nb-coord" value="' + esc(S.draft['nb-coord'] == null ? 'Marco' : S.draft['nb-coord']) + '"></label>'
+      + '<div class="row"><button class="btn primary" type="submit"' + (S.busy ? ' disabled' : '') + '>' + (S.busy ? 'Creating…' : 'Create board') + '</button></div></form>';
+  } else {
+    h += '<section class="card pad"><p>This page opens from a personal link. Ask the coordinator of your transaction to send you yours.</p></section>';
+  }
+  if (bs.length) {
+    h += '<section class="card pad"><h2>Your boards on this device</h2><ul class="boards">' + bs.map(function (b) {
+      return '<li><a href="#' + esc(b.p) + '.c.' + esc(b.k) + '"><b>' + esc((b.t || '').trim() || 'Untitled board') + '</b><span>' + esc(fmtDay(b.a)) + '</span></a></li>';
+    }).join('') + '</ul></section>';
+  }
+  return h + '<footer class="foot"><a class="btn plain" href="?demo">Show an example</a><p>Version ' + VERSION + '</p></footer>';
+}
+function view() {
+  var ps, co;
+  if (S.screen === 'start') { return startView(); }
+  if (S.fatal) { return plainHead('This link does not work') + '<section class="card pad"><p>' + esc(S.fatal) + '</p></section>'; }
+  if (S.screen !== 'board' || !S.ready || !D().plan) { return plainHead('Opening the board…'); }
+  if (S.me !== 'c' && !person(S.me)) { return plainHead('This link does not work') + '<section class="card pad"><p>This person is no longer on the board. Ask the coordinator for a new link.</p></section>'; }
+  ps = people(); co = isCoord() && S.canWrite;
+  return head() + banner() + who() + statusCard() + card(coord()) + '<main class="grid">' + ps.map(card).join('') + '</main>'
+    + (co && ps.length < 6 ? '<button type="button" class="btn plain" data-act="addp">Add a person</button>' : '') + footer();
+}
+
+/* ---------- painting: wait out an in-progress tap so a re-render never swallows it ---------- */
+var timer = 0, ptr = false, dirty = false, ptT = 0;
+function fit(t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }
+function paint() {
+  var a = document.activeElement, keep = null, f, el, tas, i;
+  if (a && a.id && app.contains(a)) { keep = { id: a.id, v: a.value, date: a.type === 'date' }; try { keep.s = a.selectionStart; keep.e = a.selectionEnd; } catch (e) {} }
+  app.innerHTML = view();
+  tas = app.querySelectorAll('textarea');
+  for (i = 0; i < tas.length; i++) { fit(tas[i]); }
+  f = S.focusNext && document.getElementById(S.focusNext);
+  if (f) { S.focusNext = null; f.focus(); if (f.className === 'linkbox') { f.select(); } return; }
+  if (keep) {
+    el = document.getElementById(keep.id);
+    if (el) {
+      if (!keep.date && typeof keep.v === 'string' && el.value !== keep.v) { el.value = keep.v; if (el.tagName === 'TEXTAREA') { fit(el); } }
+      try { el.focus({ preventScroll: true }); } catch (e2) { el.focus(); }
+      try { if (!keep.date && keep.s != null) { el.setSelectionRange(keep.s, keep.e); } } catch (e3) {}
+    }
+  }
+}
+function render() { if (timer) { return; } timer = setTimeout(function () { timer = 0; if (ptr) { dirty = true; return; } paint(); }, 0); }
+function flush() { ptr = false; clearTimeout(ptT); if (timer) { clearTimeout(timer); timer = 0; } dirty = false; paint(); }
+function release(ms) { clearTimeout(ptT); ptT = setTimeout(function () { ptr = false; if (dirty) { dirty = false; paint(); } }, ms); }
+document.addEventListener('pointerdown', function () { ptr = true; release(1500); }, true);
+document.addEventListener('pointerup', function () { release(150); }, true);
+document.addEventListener('pointercancel', function () { release(150); }, true);
+
+/* ---------- actions ---------- */
+function copyText(t, ok, fail) {
+  function legacy() {
+    var ta, r = false;
+    try { ta = document.createElement('textarea'); ta.value = t; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); r = document.execCommand('copy'); document.body.removeChild(ta); } catch (e) { r = false; }
+    if (r) { ok(); } else { fail(); }
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(t).then(ok, legacy); } else { legacy(); }
+}
+function copyLink(pid) {
+  var link = linkFor(pid);
+  if (!link) { S.err = 'The link is not ready yet. Wait a moment and try again.'; return; }
+  copyText(link, function () {
+    S.copied = pid; S.showLink = ''; render();
+    setTimeout(function () { if (S.copied === pid) { S.copied = ''; render(); } }, 2500);
+  }, function () { S.showLink = pid; S.focusNext = 'lk-' + pid; render(); });
+}
+function closest(el, sel) { while (el && el !== app && el.nodeType === 1) { if (el.matches(sel)) { return el; } el = el.parentNode; } return null; }
+app.addEventListener('click', function (e) {
+  var b = closest(e.target, 'button[data-act]'), a, id, t, nid;
+  if (!b) { return; }
+  a = b.getAttribute('data-act'); id = b.getAttribute('data-id');
+  if (a === 'me') { S.me = id; S.confirm = null; }
+  else if (a === 'add') { nid = 't' + rid(10); S.focusNext = 'tt-' + nid; store.setTask(nid, { pid: id, title: '', due: '', baseTitle: '', baseDue: '', addedBy: isCoord() ? 'c' : id, done: false, at: Date.now() }); }
+  else if (a === 'done') { t = task(id); if (t) { store.patchTask(id, { done: !t.done }); } }
+  else if (a === 'del') { store.delTask(id); }
+  else if (a === 'withdraw') { store.delSig(id); }
+  else if (a === 'addp') { nid = store.addPerson(); S.focusNext = 'pn-' + nid; }
+  else if (a === 'rm') { S.confirm = id; }
+  else if (a === 'rm-no') { S.confirm = null; }
+  else if (a === 'rm-yes') { store.removePerson(id); S.confirm = null; }
+  else if (a === 'link') { copyLink(id); }
+  else if (a === 'okerr') { S.err = ''; }
+  flush();
+});
+app.addEventListener('change', function (e) {
+  var el = e.target, a = el.getAttribute('data-act'), id = el.getAttribute('data-id'), v = el.value, t, p, k;
+  if (a === 'title' || a === 'due') {
+    t = task(id); if (!t || (t[a] || '') === v) { return; }
+    p = {}; p[a] = v; if (isCoord()) { p[a === 'title' ? 'baseTitle' : 'baseDue'] = v; }
+    store.patchTask(id, p);
+  } else if (a === 'ptitle') {
+    if ((D().plan.title || '') === v) { return; }
+    store.setTitle(v);
+  } else if (a === 'pname' || a === 'prole') {
+    p = person(id); k = a === 'pname' ? 'name' : 'role';
+    if (!p || (p[k] || '') === v) { return; }
+    t = {}; t[k] = v; store.setPerson(id, t);
+  } else { return; }
+  render();
+});
+app.addEventListener('input', function (e) {
+  var el = e.target, k = el.getAttribute('data-draft'), b;
+  if (el.tagName === 'TEXTAREA') { fit(el); }
+  if (k) { S.draft[k] = el.value; if (k.indexOf('sn-') === 0 && el.form) { b = el.form.querySelector('button'); if (b) { b.disabled = el.value.trim().length < 2; } } }
+});
+app.addEventListener('focusin', function (e) { if (e.target.className === 'linkbox') { e.target.select(); } });
+app.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.keyCode === 13) && e.target.tagName === 'TEXTAREA') { e.preventDefault(); e.target.blur(); } });
+app.addEventListener('submit', function (e) {
+  var f = e.target, pid, name, title, cn;
+  e.preventDefault();
+  if (f.id === 'newboard') {
+    if (S.busy) { return; }
+    title = (S.draft['nb-title'] || '').trim(); cn = (S.draft['nb-coord'] == null ? 'Marco' : S.draft['nb-coord']).trim() || 'Marco';
+    createBoard(title, cn);
+    return;
+  }
+  pid = f.getAttribute('data-pid'); name = (S.draft['sn-' + pid] || '').trim();
+  if (!pid || name.length < 2 || !complete(pid)) { return; }
+  store.setSig(pid, { name: name, at: Date.now(), seal: sealOf(pid), n: tasksOf(pid).length });
+  delete S.draft['sn-' + pid];
+  flush();
+});
+
+/* ---------- start ---------- */
+function route() {
+  var h = location.hash.replace(/^#/, ''), m;
+  if (/[?&]demo\b/.test(location.search)) { enterDemo(); paint(); return; }
+  m = /^new\.([A-Za-z0-9]{16,64})$/.exec(h);
+  if (m) { ls.set('code', m[1]); try { history.replaceState(null, '', location.pathname); } catch (e) {} h = ''; }
+  m = /^([A-Za-z0-9]{20,40})\.(c|p[A-Za-z0-9]{1,12})\.([A-Za-z0-9]{20,40})$/.exec(h);
+  if (m) { openBoard(m[1], m[2], m[3]); return; }
+  if (h) { S.screen = 'board'; S.ready = true; S.fatal = fatalText({ code: 'bad-link' }); paint(); return; }
+  S.screen = 'start'; paint();
+}
+window.addEventListener('hashchange', function () { location.reload(); });
+route();
+})();
+</script>
+</body>
+</html>
