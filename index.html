@@ -157,7 +157,7 @@ a.btn{text-decoration:none;display:inline-block}
 @media (max-width:560px){
   .wrap{padding:20px 16px 40px;gap:16px}
   .title{font-size:24px}
-  textarea,input{font-size:16px!important}
+  textarea:not(.title),input{font-size:16px!important}
 }
 @media (prefers-reduced-motion:no-preference){.seg button,.check,.btn{transition:background-color .15s ease,opacity .15s ease}}
 </style>
@@ -172,7 +172,7 @@ a.btn{text-decoration:none;display:inline-block}
 /* Commitment Board. Own code is ES5 on purpose (var and function only). */
 (function () {
 'use strict';
-var VERSION = '1.0.0';
+var VERSION = '1.0.1';
 var FB = {
   apiKey: 'AIzaSyCoK5EHjJKveuYVQZtMrMUlmkY3_LYsTi0',
   authDomain: 'commitment-board-290f6.firebaseapp.com',

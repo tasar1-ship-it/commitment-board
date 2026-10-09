@@ -3,7 +3,7 @@
 A coordinator (Marco) lists the tasks and due dates of each person in a financial transaction. Each person opens a personal link, reviews and adjusts their own tasks, and signs off. The sign-off is a personal commitment, not a legal act.
 
 ## Current version
-- App 1.0.0 (9 Oct 2026). First build of the standalone version. It replaces the Claude artifact of the same day, which needed Claude accounts.
+- App 1.0.1 (9 Oct 2026). Standalone version; it replaces the Claude artifact of the same day, which needed Claude accounts.
 - Repo: tasar1-ship-it/commitment-board, live at https://tasar1-ship-it.github.io/commitment-board/
 - Example view: https://tasar1-ship-it.github.io/commitment-board/?demo (in-memory sample, nothing saved, with a "View as" switch)
 - Firebase project: commitment-board (ID commitment-board-290f6), Realtime Database commitment-board-290f6-default-rtdb in europe-west1, Anonymous sign-in on, web app "Commitment Board" registered. Gemini and Google Analytics switched off.
@@ -46,5 +46,11 @@ A coordinator (Marco) lists the tasks and due dates of each person in a financia
 - The coordinator's link is the master key of a board. Lost on all devices, it can only be read out of keys/<board id> in the console.
 - English only. Dates are shown in day-month order.
 
+## Tested (9 Oct 2026)
+- Local: rules 100 cases, page against rules 51 checks, own script parses as ES5.
+- Live: 63 rule cases against the real database from three separate anonymous sign-ins; one board created, filled, signed and voided through the live page in two tabs. All test data and test sign-ins were removed afterwards.
+- Not tested: a real iPhone or iPad, two people on different devices at the same moment, Safari.
+
 ## Last change
+- 1.0.1: the board title keeps its size on phones (a phone-only rule had shrunk it to 16 px).
 - 1.0.0: first build.
