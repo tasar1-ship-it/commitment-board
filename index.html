@@ -10,7 +10,8 @@
 <title>Commitment Board</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230071E3'/%3E%3Cpath d='M9 16.5l4.5 4.5L23 11.5' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <style>
-/* Layout: one column, max 1040px. Sign-off status first, then the coordinator's box, then one tinted box per person in two columns that stack on phones. */
+/* Layout: one column, max 1040px. Changes since the last visit, sign-off status, the view switch, then either the boxes
+   (coordinator's box, then one tinted box per person in two columns that stack on phones) or one date-ordered timeline. */
 :root{
   color-scheme:light dark;
   --bg:#FFFFFF; --surface:#F5F5F7; --field:#FFFFFF; --fill:rgba(118,118,128,.12); --fill-soft:rgba(118,118,128,.08);
@@ -20,6 +21,7 @@
   --good:#176B2C; --good-soft:rgba(52,199,89,.16); --good-dot:#34C759;
   --warn:#8F4700; --warn-soft:rgba(255,149,0,.16); --warn-dot:#FF9500;
   --bad:#C20014; --bad-soft:rgba(255,59,48,.12);
+  --d0:#0071E3; --d1:#0E8A96; --d2:#A445D0; --d3:#9A7650; --d4:#5856D6; --d5:#E0294B; --d6:#C29200;
   --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue","Segoe UI",Roboto,Arial,sans-serif;
   --font-sign:"Snell Roundhand","Apple Chancery","Segoe Script","Brush Script MT",cursive;
   --font-mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
@@ -34,6 +36,7 @@
     --good:#30D158; --good-soft:rgba(48,209,88,.18); --good-dot:#30D158;
     --warn:#FF9F0A; --warn-soft:rgba(255,159,10,.18); --warn-dot:#FF9F0A;
     --bad:#FF453A; --bad-soft:rgba(255,69,58,.18);
+    --d0:#0A84FF; --d1:#4CC3CF; --d2:#C77DEB; --d3:#C9A57E; --d4:#8E8CF0; --d5:#FF6680; --d6:#F2C94C;
   }
 }
 *{box-sizing:border-box}
@@ -154,10 +157,44 @@ a.btn{text-decoration:none;display:inline-block}
 .boards span{color:var(--fg-2);font-size:13px}
 .muted{color:var(--fg-2)}
 .foot{display:flex;flex-direction:column;align-items:flex-start;gap:6px;font-size:12.5px;color:var(--fg-2);max-width:72ch}
+.note.good{color:var(--good)}
+
+/* Colour dot per person (the box tints are too pale to mark a person in a list). */
+.dot{flex:none;display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--d0)}
+.d1{background:var(--d1)}.d2{background:var(--d2)}.d3{background:var(--d3)}.d4{background:var(--d4)}.d5{background:var(--d5)}.d6{background:var(--d6)}
+.fresh-tag{font-size:11px;font-weight:700;letter-spacing:.02em;color:var(--accent-ink);background:var(--fill-soft);box-shadow:inset 0 0 0 1px var(--accent);padding:1px 7px;border-radius:999px}
+
+/* Changes since the last visit on this device */
+.changes{padding:16px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 3px 0 0 var(--accent)}
+.changes-top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 16px}
+.changes h2{font-size:16px;font-weight:600}
+.ch-list{display:flex;flex-direction:column;gap:7px;font-size:14px}
+.ch-list li{display:flex;align-items:baseline;gap:9px;min-width:0;overflow-wrap:anywhere}
+.ch-list .dot{position:relative;top:-1px}
+.ch-list b{font-weight:600}
+
+/* View switch and timeline */
+.viewbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px}
+.tl{padding:6px 20px 16px}
+.tl h3{margin:14px 0 2px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-2)}
+.tl h3.bad{color:var(--bad)}
+.tl-row{display:grid;grid-template-columns:7.2em minmax(0,1fr);column-gap:14px;row-gap:3px;padding:10px 0;border-top:1px solid var(--line)}
+.tl h3+ul .tl-row:first-child{border-top:0}
+.tl-date{grid-column:1;grid-row:1/3;font-weight:600;font-variant-numeric:tabular-nums}
+.tl-row.overdue .tl-date{color:var(--bad)}
+.tl-row.done .tl-date,.tl-row.done .tl-task{color:var(--fg-2)}
+.tl-row.done .tl-task{text-decoration:line-through}
+.tl-task{grid-column:2;overflow-wrap:anywhere}
+.tl-meta{grid-column:2;display:flex;flex-wrap:wrap;align-items:center;gap:3px 10px;font-size:13px;color:var(--fg-2)}
+.tl-who{display:inline-flex;align-items:baseline;gap:6px;color:var(--fg)}
+.tl-meta .warn{color:var(--warn);font-weight:600}
+.tl-empty{padding:14px 0 4px;color:var(--fg-2)}
 @media (max-width:560px){
   .wrap{padding:20px 16px 40px;gap:16px}
   .title{font-size:24px}
   textarea:not(.title),input{font-size:16px!important}
+  .tl,.changes{padding-left:16px;padding-right:16px}
+  .tl-row{grid-template-columns:5.6em minmax(0,1fr);column-gap:10px}
 }
 @media (prefers-reduced-motion:no-preference){.seg button,.check,.btn{transition:background-color .15s ease,opacity .15s ease}}
 </style>
@@ -172,7 +209,7 @@ a.btn{text-decoration:none;display:inline-block}
 /* Commitment Board. Own code is ES5 on purpose (var and function only). */
 (function () {
 'use strict';
-var VERSION = '1.0.1';
+var VERSION = '1.1.0';
 var FB = {
   apiKey: 'AIzaSyCoK5EHjJKveuYVQZtMrMUlmkY3_LYsTi0',
   authDomain: 'commitment-board-290f6.firebaseapp.com',
@@ -183,7 +220,8 @@ var FB = {
 var LS = 'cb1_';
 var app = document.getElementById('app');
 var S = { screen: 'load', mode: 'live', ready: false, fatal: '', P: '', tok: '', me: null, db: null, uid: null, canWrite: true,
-  err: '', offline: false, confirm: null, focusNext: null, draft: {}, copied: '', showLink: '', busy: false, startErr: '' };
+  err: '', offline: false, confirm: null, focusNext: null, draft: {}, copied: '', showLink: '', busy: false, startErr: '',
+  view: 'people', tlf: 'open', base: null, allChanges: false, relinked: '' };
 var live = { plan: null, tasks: [], sigs: {}, keys: {} }, demo = null;
 function D() { return S.mode === 'demo' ? demo : live; }
 
@@ -243,6 +281,55 @@ function sealOf(pid) { return hash(tasksOf(pid).map(function (t) { return (t.tit
 function status(pid) { var s = D().sigs[pid]; if (!s) { return tasksOf(pid).length ? 'awaiting' : 'empty'; } return s.seal === sealOf(pid) ? 'signed' : 'stale'; }
 function isCoord() { return S.me === 'c'; }
 function mix(a, b) { var k, o = {}; for (k in a) { o[k] = a[k]; } for (k in b) { o[k] = b[k]; } return o; }
+function dotOf(p) { return '<i class="dot d' + (p ? tintOf(p) : 0) + '" aria-hidden="true"></i>'; }
+
+/* ---------- changes since the last visit: a snapshot per board and person, kept on this device only ---------- */
+function rowOf(t) { return [t.pid, t.title || '', t.due || '', t.done ? 1 : 0]; }
+function snapNow() {
+  var d = D(), o = { at: Date.now(), t: {}, s: {}, p: {} }, k;
+  d.tasks.forEach(function (t) { o.t[t.id] = rowOf(t); });
+  for (k in d.sigs) { if (d.sigs[k]) { o.s[k] = d.sigs[k].seal; } }
+  people().forEach(function (p) { o.p[p.id] = p.name || ''; });
+  return o;
+}
+function seenKey() { return 'seen.' + S.P + '.' + S.me; }
+function loadSeen() { try { var o = JSON.parse(ls.get(seenKey()) || 'null'); return o && o.t && o.s && o.p && o.at ? o : null; } catch (e) { return null; } }
+function saveSeen() { if (S.mode === 'live' && S.screen === 'board' && live.plan && S.me && !S.fatal) { ls.set(seenKey(), JSON.stringify(snapNow())); } }
+/* Your own edits are written into the snapshot as you make them, so only other people's changes are reported. */
+function ackTask(id) { var t; if (!S.base) { return; } t = task(id); if (t) { S.base.t[id] = rowOf(t); } else { delete S.base.t[id]; } }
+function ackSig(pid) { var s; if (!S.base) { return; } s = D().sigs[pid]; if (s) { S.base.s[pid] = s.seal; } else { delete S.base.s[pid]; } }
+function ackPerson(pid) { var p; if (!S.base) { return; } p = person(pid); if (p && pid !== 'c') { S.base.p[pid] = p.name || ''; } else { delete S.base.p[pid]; } }
+var CH = { list: [], fresh: {} };
+function changes() {
+  var b = S.base, d = D(), out = [], fresh = {}, order = {}, k, o;
+  if (!b) { return { list: [], fresh: {} }; }
+  everyone().forEach(function (p, i) { order[p.id] = i; });
+  function nm(pid) { var p = person(pid); return esc(p ? pname(p) : (b.p[pid] || 'A removed person')); }
+  function q(s) { return '“' + esc((s || '').trim() || 'Untitled task') + '”'; }
+  function add(pid, h, tid, tag) { out.push({ pid: pid, h: h, n: out.length }); if (tid && !fresh[tid]) { fresh[tid] = tag || 'Updated'; } }
+  for (k in b.p) { if (!person(k)) { add(k, '<b>' + esc(b.p[k] || 'A person') + '</b> was removed from the board'); } }
+  people().forEach(function (p) { if (!b.p.hasOwnProperty(p.id)) { add(p.id, '<b>' + esc(pname(p)) + '</b> was added to the board'); } });
+  everyone().forEach(function (p) {
+    var s = d.sigs[p.id], was = b.s[p.id];
+    if (s && !was) { add(p.id, '<b>' + nm(p.id) + '</b> signed off'); }
+    else if (!s && was) { add(p.id, '<b>' + nm(p.id) + '</b> withdrew the sign-off'); }
+    else if (s && was && s.seal !== was) { add(p.id, '<b>' + nm(p.id) + '</b> signed again'); }
+  });
+  d.tasks.forEach(function (t) {
+    var w = '<b>' + nm(t.pid) + '</b> · ';
+    if (!person(t.pid)) { return; }
+    o = b.t[t.id];
+    if (!o) { add(t.pid, w + 'new task ' + q(t.title) + (isDate(t.due) ? ', due ' + fmt(t.due) : ''), t.id, 'New'); return; }
+    if ((o[2] || '') !== (t.due || '')) {
+      add(t.pid, w + q(t.title) + (isDate(o[2]) && isDate(t.due) ? ' moved from ' + fmt(o[2]) + ' to ' + fmt(t.due) : isDate(t.due) ? ' now due ' + fmt(t.due) : ' no longer has a date'), t.id);
+    }
+    if ((o[1] || '').trim() !== (t.title || '').trim() && (o[1] || '').trim()) { add(t.pid, w + 'reworded ' + q(o[1]) + ' to ' + q(t.title), t.id); }
+    if (!!o[3] !== !!t.done) { add(t.pid, w + (t.done ? 'done: ' : 'reopened: ') + q(t.title), t.id); }
+  });
+  for (k in b.t) { if (!task(k) && person(b.t[k][0])) { add(b.t[k][0], '<b>' + nm(b.t[k][0]) + '</b> · removed ' + q(b.t[k][1])); } }
+  out.sort(function (x, y) { var a = order.hasOwnProperty(x.pid) ? order[x.pid] : 99, c = order.hasOwnProperty(y.pid) ? order[y.pid] : 99; return (a - c) || (x.n - y.n); });
+  return { list: out, fresh: fresh };
+}
 
 /* ---------- storage: the shared board in Firebase, or an in-memory example ---------- */
 function ref(p) { return S.db.ref(p); }
@@ -256,7 +343,7 @@ function werr(e) {
 var store = {
   setTitle: function (v) { D().plan.title = v; if (S.mode === 'live') { ref(base() + '/meta/title').set(v).catch(werr); } },
   setPerson: function (pid, patch) {
-    var p = person(pid), k; if (p) { for (k in patch) { p[k] = patch[k]; } }
+    var p = person(pid), k; if (p) { for (k in patch) { p[k] = patch[k]; } } ackPerson(pid);
     if (S.mode === 'live') { ref(base() + '/people/' + pid).update(patch).catch(werr); }
   },
   addPerson: function () {
@@ -264,7 +351,7 @@ var store = {
     while (tn < 6 && used.indexOf(tn) >= 0) { tn++; }
     for (i = 0; i < ps.length; i++) { ord = Math.max(ord, ps[i].order || 0); }
     rec = { name: '', role: '', tint: tn, order: ord + 1 };
-    ps.push(mix({ id: pid }, rec));
+    ps.push(mix({ id: pid }, rec)); ackPerson(pid);
     if (S.mode === 'live') { u = {}; u[base() + '/people/' + pid] = rec; u['keys/' + S.P + '/' + rid(24)] = pid; S.db.ref().update(u).catch(werr); }
     return pid;
   },
@@ -279,15 +366,27 @@ var store = {
     d.tasks = d.tasks.filter(function (t) { return t.pid !== pid; });
     delete d.sigs[pid];
     d.plan.people = d.plan.people.filter(function (p) { return p.id !== pid; });
+    for (i = 0; i < ts.length; i++) { ackTask(ts[i].id); }
+    ackSig(pid); ackPerson(pid);
   },
-  setTask: function (id, t) { D().tasks.push(mix({ id: id }, t)); if (S.mode === 'live') { ref(base() + '/tasks/' + id).set(t).catch(werr); } },
-  patchTask: function (id, p) { var t = task(id), k; if (t) { for (k in p) { t[k] = p[k]; } } if (S.mode === 'live') { ref(base() + '/tasks/' + id).update(p).catch(werr); } },
-  delTask: function (id) { var d = D(); d.tasks = d.tasks.filter(function (t) { return t.id !== id; }); if (S.mode === 'live') { ref(base() + '/tasks/' + id).remove().catch(werr); } },
+  /* A new link for one person: the old token is deleted, so the old link can no longer open the board, change or sign anything. */
+  replaceLink: function (pid) {
+    var u = {}, k, tok = rid(24);
+    for (k in live.keys) { if (live.keys[k] === pid) { u['keys/' + S.P + '/' + k] = null; } }
+    u['keys/' + S.P + '/' + tok] = pid;
+    S.db.ref().update(u).then(function () {
+      for (k in live.keys) { if (live.keys[k] === pid) { delete live.keys[k]; } }
+      live.keys[tok] = pid; S.relinked = pid; S.copied = ''; S.showLink = ''; render();
+    }).catch(werr);
+  },
+  setTask: function (id, t) { D().tasks.push(mix({ id: id }, t)); ackTask(id); if (S.mode === 'live') { ref(base() + '/tasks/' + id).set(t).catch(werr); } },
+  patchTask: function (id, p) { var t = task(id), k; if (t) { for (k in p) { t[k] = p[k]; } } ackTask(id); if (S.mode === 'live') { ref(base() + '/tasks/' + id).update(p).catch(werr); } },
+  delTask: function (id) { var d = D(); d.tasks = d.tasks.filter(function (t) { return t.id !== id; }); ackTask(id); if (S.mode === 'live') { ref(base() + '/tasks/' + id).remove().catch(werr); } },
   setSig: function (pid, s) {
-    D().sigs[pid] = s;
+    D().sigs[pid] = s; ackSig(pid);
     if (S.mode === 'live') { ref(base() + '/sigs/' + pid).set({ name: s.name, seal: s.seal, n: s.n, at: firebase.database.ServerValue.TIMESTAMP }).catch(werr); }
   },
-  delSig: function (pid) { delete D().sigs[pid]; if (S.mode === 'live') { ref(base() + '/sigs/' + pid).remove().catch(werr); } }
+  delSig: function (pid) { delete D().sigs[pid]; ackSig(pid); if (S.mode === 'live') { ref(base() + '/sigs/' + pid).remove().catch(werr); } }
 };
 function ingest(v) {
   var k, ps = [], ts = [], q;
@@ -320,6 +419,7 @@ var offT = 0;
 function attach() {
   ref(base()).on('value', function (s) {
     ingest(s.val()); S.ready = true;
+    if (live.plan && !S.base) { S.base = loadSeen(); if (!S.base) { S.base = snapNow(); saveSeen(); } }
     if (!live.plan) { S.fatal = 'This board no longer exists.'; }
     else if (isCoord()) { saveBoard({ p: S.P, k: S.tok, t: live.plan.title, a: (s.val().meta.createdAt || Date.now()) }); }
     render();
@@ -392,6 +492,9 @@ function enterDemo() {
   demo.sigs.p1 = { name: 'Anna Weber', at: t - 26 * 36e5, seal: sealOf('p1'), n: 3 };
   demo.sigs.p2 = { name: 'Jonas Keller', at: t - 20 * 36e5, seal: sealOf('p2'), n: 2 };
   demo.sigs.p4 = { name: 'Peter Lang', at: t - 30 * 36e5, seal: '0000-0000', n: 1 };
+  /* The example's "last visit" was two days ago: since then Anna signed and finished a task, Jonas moved a date, Peter added a task. */
+  S.base = snapNow(); S.base.at = t - 48 * 36e5;
+  delete S.base.s.p1; S.base.t.t1[3] = 0; S.base.t.t4[2] = task('t4').baseDue; delete S.base.t.t9;
 }
 
 /* ---------- view ---------- */
@@ -447,6 +550,7 @@ function taskRow(t, p, canTick, canChange, co) {
     m.push('<input id="td-' + t.id + '" class="t-date" type="date" data-act="due" data-id="' + t.id + '" value="' + esc(isDate(t.due) ? t.due : '') + '" aria-label="Due date">');
     if (isDate(t.due)) { m.push(esc(FW.format(toD(t.due)))); }
   } else { m.push('<span class="t-date">' + (isDate(t.due) ? fmt(t.due) : 'No date yet') + '</span>'); }
+  if (CH.fresh[t.id]) { m.push('<span class="fresh-tag">' + CH.fresh[t.id] + '</span>'); }
   if (t.done) { m.push('Done'); }
   else if (od) { m.push('<span class="bad">Overdue</span>'); }
   else if (isToday) { m.push('<span class="warn">Due today</span>'); }
@@ -493,13 +597,69 @@ function card(p) {
   var add = canChange ? '<button type="button" class="add" data-act="add" data-id="' + pid + '">Add task</button>' : '';
   var sig = sigBlock(p, st, ts.length, mine), admin = '', foot;
   if (co && S.canWrite && pid !== 'c') {
-    admin = S.confirm === pid
+    admin = S.confirm === 'rm:' + pid
       ? '<div class="row"><span class="note">Remove ' + esc(pname(p)) + ' and ' + (ts.length === 1 ? '1 task' : ts.length + ' tasks') + '?</span><button type="button" class="btn plain danger" data-act="rm-yes" data-id="' + pid + '">Remove</button><button type="button" class="btn plain" data-act="rm-no">Keep</button></div>'
-      : '<div class="row">' + (S.mode === 'live' ? '<button type="button" class="btn plain" data-act="link" data-id="' + pid + '">' + (S.copied === pid ? 'Link copied' : 'Copy personal link') + '</button>' : '')
+      : S.confirm === 'rl:' + pid
+      ? '<div class="row"><span class="note">Give ' + esc(pname(p)) + ' a new personal link? The current link stops working at once. Tasks and sign-off stay as they are.</span><button type="button" class="btn plain danger" data-act="rl-yes" data-id="' + pid + '">Replace link</button><button type="button" class="btn plain" data-act="rm-no">Keep</button></div>'
+      : (S.relinked === pid ? '<p class="note good">New link ready. The old link no longer works. Copy the new one and send it to ' + esc(pname(p)) + '.</p>' : '')
+        + '<div class="row">' + (S.mode === 'live' ? '<button type="button" class="btn plain" data-act="link" data-id="' + pid + '">' + (S.copied === pid ? 'Link copied' : 'Copy personal link') + '</button>'
+        + '<button type="button" class="btn plain" data-act="rl" data-id="' + pid + '">Replace link</button>' : '')
         + '<button type="button" class="btn plain danger" data-act="rm" data-id="' + pid + '">Remove person</button></div>' + (S.showLink === pid ? linkBox(pid) : '');
   }
   foot = sig || admin ? '<div class="p-foot">' + sig + admin + '</div>' : '';
   return '<article class="card person t' + tintOf(p) + '"><div class="p-head"><div class="p-id">' + idb + '</div>' + (pill ? '<span class="pill ' + st + '">' + pill + '</span>' : '') + '</div>' + list + add + foot + '</article>';
+}
+function changesCard() {
+  var L = CH.list, show, more;
+  if (!L.length) { return ''; }
+  show = S.allChanges ? L : L.slice(0, 6); more = L.length - show.length;
+  return '<section class="card changes" aria-label="Changes since your last visit"><div class="changes-top"><h2>' + (L.length === 1 ? '1 change' : L.length + ' changes') + ' since ' + esc(fmtTime(S.base.at)) + '</h2>'
+    + '<button type="button" class="btn plain" data-act="seen">Mark as seen</button></div><ul class="ch-list">'
+    + show.map(function (c) { return '<li>' + dotOf(person(c.pid)) + '<span>' + c.h + '</span></li>'; }).join('') + '</ul>'
+    + (more ? '<button type="button" class="btn plain" data-act="allch">Show ' + more + ' more</button>' : '')
+    + '<p class="line">Remembered on this device only. Tasks that changed are tagged on the board.</p></section>';
+}
+function viewBar() {
+  function opt(act, id, label, cur) { return '<button type="button" data-act="' + act + '" data-id="' + id + '" aria-pressed="' + (cur === id) + '">' + label + '</button>'; }
+  return '<div class="viewbar"><div class="seg" role="group" aria-label="View">' + opt('view', 'people', 'By person', S.view) + opt('view', 'timeline', 'Timeline', S.view) + '</div>'
+    + (S.view === 'timeline' ? '<div class="seg" role="group" aria-label="Show">' + opt('tlf', 'open', 'Open', S.tlf) + opt('tlf', 'overdue', 'Overdue', S.tlf) + opt('tlf', 'week', 'Next 7 days', S.tlf) + opt('tlf', 'all', 'All', S.tlf) + '</div>' : '')
+    + '</div>';
+}
+/* All tasks of all people in date order, grouped by urgency. Read-only: tasks are changed in the boxes. */
+function timeline() {
+  var td = today(), wk, x = new Date(), order = {}, f = S.tlf, groups, ts, h = '', any = false;
+  x.setDate(x.getDate() + 7); wk = iso(x);
+  everyone().forEach(function (p, i) { order[p.id] = i; });
+  ts = D().tasks.filter(function (t) { return person(t.pid); }).sort(function (a, b) {
+    var x1 = a.due || '9999', y1 = b.due || '9999';
+    return x1 < y1 ? -1 : x1 > y1 ? 1 : (order[a.pid] - order[b.pid]) || ((a.at || 0) - (b.at || 0));
+  });
+  groups = [
+    { k: 'overdue', name: 'Overdue', cls: 'bad', test: function (t) { return !t.done && isDate(t.due) && t.due < td; } },
+    { k: 'today', name: 'Today', test: function (t) { return !t.done && t.due === td; } },
+    { k: 'week', name: 'Next 7 days', test: function (t) { return !t.done && isDate(t.due) && t.due > td && t.due <= wk; } },
+    { k: 'later', name: 'Later', test: function (t) { return !t.done && isDate(t.due) && t.due > wk; } },
+    { k: 'nodate', name: 'No date yet', test: function (t) { return !t.done && !isDate(t.due); } },
+    { k: 'done', name: 'Done', test: function (t) { return !!t.done; } }
+  ].filter(function (g) {
+    return f === 'all' || (f === 'open' && g.k !== 'done') || (f === 'overdue' && g.k === 'overdue') || (f === 'week' && (g.k === 'overdue' || g.k === 'today' || g.k === 'week'));
+  });
+  groups.forEach(function (g) {
+    var rows = ts.filter(g.test);
+    if (!rows.length) { return; }
+    any = true;
+    h += '<h3' + (g.cls ? ' class="' + g.cls + '"' : '') + '>' + g.name + ' · ' + rows.length + '</h3><ul>' + rows.map(function (t) {
+      var p = person(t.pid), m = ['<span class="tl-who">' + dotOf(p) + esc(pname(p)) + '</span>'];
+      if (CH.fresh[t.id]) { m.push('<span class="fresh-tag">' + CH.fresh[t.id] + '</span>'); }
+      if (!t.done && isDate(t.due) && weekend(t.due)) { m.push('<span class="warn">Weekend</span>'); }
+      if ((!t.addedBy || t.addedBy === 'c') && isDate(t.baseDue) && isDate(t.due) && t.baseDue !== t.due) { m.push('Moved from ' + fmt(t.baseDue)); }
+      if (status(t.pid) === 'awaiting') { m.push('Not signed off'); } else if (status(t.pid) === 'stale') { m.push('<span class="warn">Changed after sign-off</span>'); }
+      return '<li class="tl-row' + (g.k === 'overdue' ? ' overdue' : '') + (t.done ? ' done' : '') + '"><span class="tl-date">' + (isDate(t.due) ? fmt(t.due) : '—') + '</span>'
+        + '<span class="tl-task">' + esc((t.title || '').trim() || 'Untitled task') + '</span><span class="tl-meta">' + m.join('') + '</span></li>';
+    }).join('') + '</ul>';
+  });
+  if (!any) { h = '<p class="tl-empty">' + ({ open: 'No open tasks.', overdue: 'Nothing is overdue.', week: 'Nothing is due in the next 7 days.', all: 'No tasks yet.' })[f] + '</p>'; }
+  return '<section class="card tl" aria-label="Timeline">' + h + '</section>';
 }
 function footer() {
   var h = '<footer class="foot">';
@@ -535,8 +695,9 @@ function view() {
   if (S.fatal) { return plainHead('This link does not work') + '<section class="card pad"><p>' + esc(S.fatal) + '</p></section>'; }
   if (S.screen !== 'board' || !S.ready || !D().plan) { return plainHead('Opening the board…'); }
   if (S.me !== 'c' && !person(S.me)) { return plainHead('This link does not work') + '<section class="card pad"><p>This person is no longer on the board. Ask the coordinator for a new link.</p></section>'; }
-  ps = people(); co = isCoord() && S.canWrite;
-  return head() + banner() + who() + statusCard() + card(coord()) + '<main class="grid">' + ps.map(card).join('') + '</main>'
+  ps = people(); co = isCoord() && S.canWrite; CH = changes();
+  if (S.view === 'timeline') { return head() + banner() + who() + changesCard() + statusCard() + viewBar() + timeline() + footer(); }
+  return head() + banner() + who() + changesCard() + statusCard() + viewBar() + card(coord()) + '<main class="grid">' + ps.map(card).join('') + '</main>'
     + (co && ps.length < 6 ? '<button type="button" class="btn plain" data-act="addp">Add a person</button>' : '') + footer();
 }
 
@@ -580,7 +741,7 @@ function copyLink(pid) {
   var link = linkFor(pid);
   if (!link) { S.err = 'The link is not ready yet. Wait a moment and try again.'; return; }
   copyText(link, function () {
-    S.copied = pid; S.showLink = ''; render();
+    S.copied = pid; S.showLink = ''; if (S.relinked === pid) { S.relinked = ''; } render();
     setTimeout(function () { if (S.copied === pid) { S.copied = ''; render(); } }, 2500);
   }, function () { S.showLink = pid; S.focusNext = 'lk-' + pid; render(); });
 }
@@ -595,9 +756,15 @@ app.addEventListener('click', function (e) {
   else if (a === 'del') { store.delTask(id); }
   else if (a === 'withdraw') { store.delSig(id); }
   else if (a === 'addp') { nid = store.addPerson(); S.focusNext = 'pn-' + nid; }
-  else if (a === 'rm') { S.confirm = id; }
+  else if (a === 'rm') { S.confirm = 'rm:' + id; }
+  else if (a === 'rl') { S.confirm = 'rl:' + id; S.relinked = ''; }
   else if (a === 'rm-no') { S.confirm = null; }
   else if (a === 'rm-yes') { store.removePerson(id); S.confirm = null; }
+  else if (a === 'rl-yes') { store.replaceLink(id); S.confirm = null; }
+  else if (a === 'view') { S.view = id; ls.set('view', id); }
+  else if (a === 'tlf') { S.tlf = id; }
+  else if (a === 'seen') { S.base = snapNow(); S.allChanges = false; saveSeen(); }
+  else if (a === 'allch') { S.allChanges = true; }
   else if (a === 'link') { copyLink(id); }
   else if (a === 'okerr') { S.err = ''; }
   flush();
@@ -644,6 +811,7 @@ app.addEventListener('submit', function (e) {
 /* ---------- start ---------- */
 function route() {
   var h = location.hash.replace(/^#/, ''), m;
+  if (ls.get('view') === 'timeline') { S.view = 'timeline'; }
   if (/[?&]demo\b/.test(location.search)) { enterDemo(); paint(); return; }
   m = /^new\.([A-Za-z0-9]{16,64})$/.exec(h);
   if (m) { ls.set('code', m[1]); try { history.replaceState(null, '', location.pathname); } catch (e) {} h = ''; }
@@ -652,7 +820,10 @@ function route() {
   if (h) { S.screen = 'board'; S.ready = true; S.fatal = fatalText({ code: 'bad-link' }); paint(); return; }
   S.screen = 'start'; paint();
 }
-window.addEventListener('hashchange', function () { location.reload(); });
+window.addEventListener('hashchange', function () { saveSeen(); location.reload(); });
+/* Leaving the page (or switching away on a phone) counts as having seen the board. What is on screen stays tagged until the next visit. */
+document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') { saveSeen(); } });
+window.addEventListener('pagehide', saveSeen);
 route();
 })();
 </script>

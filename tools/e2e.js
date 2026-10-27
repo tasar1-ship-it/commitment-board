@@ -2,11 +2,13 @@
 // Three browsers (coordinator, a person, an outsider) share one in-memory database guarded by the rules.
 var http = require('http'), fs = require('fs'), path = require('path');
 var targaryen = require('targaryen');
-var chromium = require('playwright').chromium;
+// ENGINE=webkit runs the same checks in Safari's engine. WebKit has no clipboard permission, so there the clipboard is a stand-in.
+var ENGINE = process.env.ENGINE || 'chromium';
+var chromium = require('playwright')[ENGINE];
 var build = require('./make-rules.js');
 
 var SITE = path.join(__dirname, '..');
-var SHOTS = path.join(__dirname, 'shots');
+var SHOTS = path.join(__dirname, 'shots', process.env.ENGINE || 'chromium');
 var CODE = 'TestStartCode1234567890ab';   // any code works here: the test builds its own copy of the rules with it
 var rules = build(CODE);
 var MOCK = fs.readFileSync(path.join(__dirname, 'mock-firebase.js'), 'utf8');
@@ -26,7 +28,7 @@ function rtdb(uid, kind, p, value) {
 function ok(label, cond, detail) { results.push({ label: label, ok: !!cond, detail: detail }); }
 
 (async function () {
-  if (!fs.existsSync(SHOTS)) { fs.mkdirSync(SHOTS); }
+  if (!fs.existsSync(SHOTS)) { fs.mkdirSync(SHOTS, { recursive: true }); }
   var server = http.createServer(function (req, res) {
     var f = req.url.split('?')[0]; if (f === '/') { f = '/index.html'; }
     var full = path.join(SITE, f);
@@ -40,7 +42,8 @@ function ok(label, cond, detail) { results.push({ label: label, ok: !!cond, deta
   var errs = [];
   async function user(uid, opts) {
     var ctx = await browser.newContext(opts || { viewport: { width: 1200, height: 900 } });
-    await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: BASE.slice(0, -1) });
+    if (ENGINE === 'chromium') { await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: BASE.slice(0, -1) }); }
+    else { await ctx.addInitScript('Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: function (t) { window.__clip = t; return Promise.resolve(); }, readText: function () { return Promise.resolve(window.__clip || ""); } } });'); }
     await ctx.addInitScript('window.__uid = ' + JSON.stringify(uid) + ';');
     await ctx.exposeFunction('__rtdb', rtdb);
     await ctx.route('**/firebase-app-compat.js', function (r) { r.fulfill({ contentType: 'application/javascript', body: MOCK }); });
@@ -137,7 +140,15 @@ function ok(label, cond, detail) { results.push({ label: label, ok: !!cond, deta
   /* 6. coordinator sees it live; a later change voids the sign-off on both screens */
   await M.waitForFunction(function () { var c = document.querySelector('.chip.signed b'); return c && c.textContent === 'Anna Weber'; }, null, { timeout: 5000 }).then(function () { ok('coordinator sees the sign-off without reloading', true); }, function () { ok('coordinator sees the sign-off without reloading', false); });
   ok('coordinator sees the moved date', /Anna Weber moved this from/.test(await txt(M, 'article.t1')));
+  var chM = await txt(M, '.changes');
+  ok('changes card lists Anna\'s sign-off, moved date and new task', /Anna Weber signed off/.test(chM) && /moved from Tue 3 Nov to Fri 6 Nov/.test(chM) && /new task “Provide the source-of-funds letter”/.test(chM), chM);
+  ok('changes card leaves out the coordinator\'s own edits', !/Circulate the closing checklist|Deliver the share transfer form/.test(chM), chM);
+  ok('changed tasks are tagged in the box', (await M.$$eval('article.t1 .fresh-tag', function (a) { return a.map(function (x) { return x.textContent; }).sort().join(','); })) === 'New,Updated');
+  ok('person sees no changes card for their own edits', !(await has(A, '.changes')));
+  await M.click('button[data-act="seen"]'); await M.waitForTimeout(200);
+  ok('mark as seen clears the card and the tags', !(await has(M, '.changes')) && !(await has(M, '.fresh-tag')));
   await M.fill('#' + d1, '2026-11-09'); await M.locator('#' + d1).blur();
+  await A.waitForFunction(function () { var c = document.querySelector('.changes'); return c && /moved from Fri 6 Nov to Mon 9 Nov/.test(c.textContent); }, null, { timeout: 5000 }).then(function () { ok('person sees the coordinator\'s date change in the changes card', true); }, function () { ok('person sees the coordinator\'s date change in the changes card', false); });
   await A.waitForFunction(function () { var p = document.querySelector('article.t1 .pill'); return p && p.textContent === 'Changed after sign-off'; }, null, { timeout: 5000 }).then(function () { ok('person sees the sign-off voided after the coordinator changed a date', true); }, function () { ok('person sees the sign-off voided after the coordinator changed a date', false); });
   await A.fill('#sn-p1', 'Anna Weber'); await A.click('form[data-pid="p1"] button[type=submit]'); await A.waitForTimeout(500);
   ok('person signs again', (await txt(A, 'article.t1 .pill')) === 'Committed');
@@ -183,13 +194,48 @@ function ok(label, cond, detail) { results.push({ label: label, ok: !!cond, deta
   ok('added person stored with a link and a free colour', !!newPid && after2.people[newPid].tint === 2 && Object.keys(db.snapshot('/keys/' + P).val()).length === 5, JSON.stringify(after2.people[newPid] || null));
   ok('status headline', (await txt(M, '.status h2')) === 'All 2 committed', await txt(M, '.status h2'));
 
+  /* 8b. timeline */
+  await M.click('button[data-act="view"][data-id="timeline"]'); await M.waitForTimeout(200);
+  ok('timeline replaces the boxes', (await has(M, '.tl')) && !(await has(M, 'article.person')));
+  var tlDates = await M.$$eval('.tl-row .tl-date', function (a) { return a.map(function (x) { return x.textContent; }); });
+  ok('timeline lists every open task in date order', tlDates.join('|') === 'Mon 2 Nov|Wed 4 Nov|Mon 9 Nov', tlDates.join('|'));
+  ok('timeline names the owner', /Anna Weber/.test(await txt(M, '.tl')) && /Marco/.test(await txt(M, '.tl')));
+  await M.click('button[data-act="tlf"][data-id="overdue"]'); await M.waitForTimeout(200);
+  ok('overdue filter', (await txt(M, '.tl')) === 'Nothing is overdue.', await txt(M, '.tl'));
+  await M.click('button[data-act="view"][data-id="people"]'); await M.waitForTimeout(200);
+  ok('back to the boxes', (await M.$$eval('article.person', function (a) { return a.length; })) === 5);
+
+  /* 8c. replace a leaked link */
+  var oldKeys = db.snapshot('/keys/' + P).val();
+  await M.click('button[data-act="rl"][data-id="p1"]'); await M.waitForTimeout(200);
+  ok('replacing a link asks first', /Give Anna Weber a new personal link\?/.test(await txt(M, 'article.t1')));
+  await M.click('button[data-act="rl-yes"][data-id="p1"]'); await M.waitForTimeout(500);
+  var newKeys = db.snapshot('/keys/' + P).val();
+  var oldTokA = linkA.split('.').pop();
+  var newTokA = Object.keys(newKeys).filter(function (k) { return newKeys[k] === 'p1'; });
+  ok('old token deleted, one new token for the same person', !newKeys[oldTokA] && newTokA.length === 1 && newTokA[0] !== oldTokA && Object.keys(newKeys).length === Object.keys(oldKeys).length, JSON.stringify(newKeys));
+  ok('coordinator is told the new link is ready', /New link ready/.test(await txt(M, 'article.t1')));
+  await M.click('button[data-act="link"][data-id="p1"]'); await M.waitForTimeout(300);
+  var linkA2 = await M.evaluate(function () { return navigator.clipboard.readText(); });
+  ok('the copied link carries the new token', linkA2 === BASE + '#' + P + '.p1.' + newTokA[0], linkA2);
+  expectDenied = true;
+  await nav(A, linkA); await A.waitForSelector('.top h1'); await A.waitForTimeout(600);
+  ok('the old link is dead', (await txt(A, '.top h1')) === 'This link does not work', await txt(A, '.top h1'));
+  ok('the old link cannot sign', (await tryWrite(A, 'set', 'plans/' + P + '/sigs/p1', { name: 'Anna Weber', seal: 'AAAA-BBBB', n: 1, at: { '.sv': 'timestamp' } })) === 'PERMISSION_DENIED');
+  expectDenied = false;
+  await nav(A, linkA2); await A.waitForSelector('article.person', { timeout: 15000 });
+  ok('the new link opens the board with the sign-off intact', /You are Anna Weber/.test(await txt(A, '.hint')) && (await txt(A, 'article.t1 .pill')) === 'Committed');
+
   /* 9. reload and the board list */
   await M.reload(); await M.waitForSelector('article.person');
   ok('board survives a reload', (await M.inputValue('#plan-title')) === 'Share purchase closing' && (await txt(M, 'article.t0 .pill')) === 'Committed');
+  ok('no changes card after a reload with nothing new', !(await has(M, '.changes')));
   await nav(M, BASE); await M.waitForSelector('.boards');
   ok('start page lists the board for the coordinator', /Share purchase closing/.test(await txt(M, '.boards')));
+  await A.click('article.t1 button[data-act="done"]'); await A.waitForTimeout(400);
   await M.click('.boards a'); await M.waitForSelector('article.person', { timeout: 15000 });
   ok('board opens from the list', (await M.$$eval('article.person', function (a) { return a.length; })) === 5);
+  ok('a change made while the coordinator was away is reported on return', /Anna Weber · done:/.test(await txt(M, '.changes')), await txt(M, '.changes').catch(function () { return 'no card'; }));
   await M.screenshot({ path: path.join(SHOTS, 'live-coordinator.png'), fullPage: true });
   await A.screenshot({ path: path.join(SHOTS, 'live-person.png'), fullPage: true });
 
@@ -198,7 +244,11 @@ function ok(label, cond, detail) { results.push({ label: label, ok: !!cond, deta
   await E.goto(BASE + '?demo'); await E.waitForSelector('article.person');
   ok('example opens with five boxes', (await E.$$eval('article.person', function (a) { return a.length; })) === 5 && /Example data/.test(await txt(E, '.banner')));
   ok('no sideways scrolling on a phone', !(await E.evaluate(function () { return document.documentElement.scrollWidth > window.innerWidth; })));
+  ok('example shows four changes since the last visit', /^4 changes since /.test(await txt(E, '.changes h2')), await txt(E, '.changes h2'));
   await E.screenshot({ path: path.join(SHOTS, 'demo-phone-dark.png'), fullPage: true });
+  await E.click('button[data-act="view"][data-id="timeline"]'); await E.waitForTimeout(200);
+  ok('example timeline on a phone, no sideways scrolling', (await has(E, '.tl-row')) && !(await E.evaluate(function () { return document.documentElement.scrollWidth > window.innerWidth; })));
+  await E.screenshot({ path: path.join(SHOTS, 'demo-phone-timeline.png'), fullPage: true });
   await A.setViewportSize({ width: 390, height: 800 });
   ok('no sideways scrolling on a phone (live board)', !(await A.evaluate(function () { return document.documentElement.scrollWidth > window.innerWidth; })));
 
